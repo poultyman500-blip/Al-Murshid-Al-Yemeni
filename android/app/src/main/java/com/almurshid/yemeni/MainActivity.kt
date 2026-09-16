@@ -1,19 +1,18 @@
 package com.almurshid.yemeni
 
 import android.os.Bundle
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.material.textview.MaterialTextView
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
 
-        val textView = MaterialTextView(this).apply {
-            text = getString(R.string.app_name)
-            textSize = 28f
-            setPadding(32, 32, 32, 32)
-        }
+        val titleText = findViewById<TextView>(R.id.titleText)
+        val subtitleText = findViewById<TextView>(R.id.subtitleText)
 
-        setContentView(textView)
+        titleText.text = getString(R.string.app_name)
+        subtitleText.text = getString(R.string.app_tagline)
     }
 }

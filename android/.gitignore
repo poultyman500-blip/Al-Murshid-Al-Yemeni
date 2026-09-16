@@ -1,0 +1,19 @@
+# Android Project Scaffold
+
+This directory contains a separate Android app for the Al-Murshid Al-Yemeni project.
+
+## Notes
+
+- The repository root still contains the existing web app.
+- The Android project is isolated in this `android/` folder to avoid overwriting the current JavaScript project.
+- The scaffold includes Room, Firebase, manifest metadata, and a minimal UI to continue building the full app.
+
+## Run
+
+From this folder:
+
+```bash
+./gradlew assembleDebug
+```
+
+If Gradle is not installed, install it and rerun the command.

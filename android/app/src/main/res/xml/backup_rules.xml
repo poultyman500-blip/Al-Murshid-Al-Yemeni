@@ -1,1 +1,6 @@
-# Android manifest backup and data extraction rules
+<resources>
+    <string name="app_name">Al-Murshid Al-Yemeni</string>
+    <string name="app_tagline">Your trusted Yemeni guide</string>
+    <string name="welcome_title">Smart Journey</string>
+    <string name="welcome_message">Track routes, record trips, and explore Yemen with confidence.</string>
+</resources>

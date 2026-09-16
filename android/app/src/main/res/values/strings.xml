@@ -1,3 +1,95 @@
-<resources>
-    <string name="app_name">Al-Murshid Al-Yemeni</string>
-</resources>
+package com.almurshid.yemeni.data.repo
+
+import com.almurshid.yemeni.data.db.ChallengeDao
+import com.almurshid.yemeni.data.db.ChallengeEntity
+import com.almurshid.yemeni.data.db.ChallengeType
+import com.almurshid.yemeni.data.db.SharedTripDao
+import com.almurshid.yemeni.data.db.SharedTripEntity
+import com.almurshid.yemeni.data.db.TripEntity
+import com.almurshid.yemeni.data.db.UserProgressDao
+import com.almurshid.yemeni.data.db.UserProgressEntity
+import kotlinx.coroutines.flow.Flow
+import java.util.UUID
+
+class SocialRepository(
+    private val sharedDao: SharedTripDao,
+    private val challengeDao: ChallengeDao,
+    private val progressDao: UserProgressDao,
+    private val tripRepo: TripRepository
+) {
+    val allTrips: Flow<List<TripEntity>> = tripRepo.allTrips
+
+    suspend fun upsertChallenges(list: List<ChallengeEntity>) {
+        list.forEach { challengeDao.upsert(it) }
+    }
+
+    suspend fun shareTrip(tripId: Long, isPublic: Boolean): String {
+        val shareId = UUID.randomUUID().toString().take(8).uppercase()
+        sharedDao.insert(
+            SharedTripEntity(
+                tripId = tripId,
+                sharedAt = System.currentTimeMillis(),
+                shareId = shareId,
+                isPublic = isPublic
+            )
+        )
+        return shareId
+    }
+
+    suspend fun getSharedTrip(shareId: String): TripEntity? {
+        val shared = sharedDao.getByShareId(shareId) ?: return null
+        sharedDao.incrementViews(shareId)
+        return tripRepo.getTrip(shared.tripId)
+    }
+
+    fun activeChallenges(): Flow<List<ChallengeEntity>> = challengeDao.getActive()
+
+    fun progress(challengeId: String): Flow<UserProgressEntity?> = progressDao.get(challengeId)
+
+    suspend fun refreshAllProgress(trips: List<TripEntity>) {
+        val challenges = challengeDao.getAllOnce()
+        val now = System.currentTimeMillis()
+
+        for (challenge in challenges) {
+            val value = when (challenge.type) {
+                ChallengeType.DISTANCE_KM -> trips.sumOf { it.distanceMeters } / 1000.0
+                ChallengeType.TRIPS_COUNT -> trips.size.toDouble()
+                ChallengeType.STREAK_DAYS -> calculateStreak(trips)
+                ChallengeType.SINGLE_TRIP_KM -> (trips.maxOfOrNull { it.distanceMeters } ?: 0.0) / 1000.0
+            }
+
+            val completed = value >= challenge.targetValue
+            progressDao.upsert(
+                UserProgressEntity(
+                    challengeId = challenge.id,
+                    currentValue = value,
+                    completed = completed,
+                    completedAt = if (completed) now else null
+                )
+            )
+        }
+    }
+
+    private fun calculateStreak(trips: List<TripEntity>): Double {
+        if (trips.isEmpty()) return 0.0
+
+        val msPerDay = 86_400_000L
+        val days = trips.map { it.startTime / msPerDay }.distinct().sortedDescending()
+
+        var maxStreak = 1
+        var currentStreak = 1
+
+        for (i in 1 until days.size) {
+            if (days[i - 1] - days[i] == 1L) {
+                currentStreak += 1
+                if (currentStreak > maxStreak) {
+                    maxStreak = currentStreak
+                }
+            } else {
+                currentStreak = 1
+            }
+        }
+
+        return maxStreak.toDouble()
+    }
+}
